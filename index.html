@@ -1,0 +1,2388 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover" />
+  <title>GymHub</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GymHub" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="apple-touch-icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23000'/%3E%3Ctext x='50%25' y='56%25' dominant-baseline='middle' text-anchor='middle' font-size='72' font-weight='800' font-family='system-ui' fill='%23f2f2f2'%3EGH%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+
+
+  <style>
+    /* ════════════════════════════════════════
+   DESIGN TOKENS — Monocromatico B/N
+════════════════════════════════════════ */
+    :root {
+      --bg: #000;
+      --c1: #0d0d0d;
+      --c2: #161616;
+      --c3: #202020;
+      --c4: #2a2a2a;
+      --c5: #383838;
+      --sep: rgba(255, 255, 255, .07);
+
+      --txt: #f2f2f2;
+      --txt2: rgba(242, 242, 242, .50);
+      --txt3: rgba(242, 242, 242, .25);
+      --txt4: rgba(242, 242, 242, .10);
+
+      /* Unico "accento" = bianco puro, per CTA primari */
+      --accent: #ffffff;
+      --accent2: #888888;
+
+
+      --r-s: 10px;
+      --r-m: 14px;
+      --r-l: 18px;
+      --r-xl: 24px;
+      /* Fascia nera sopra (#top-safe-area) + pagine full-screen: safe-area + margine sotto Dynamic Island */
+      --top-black-h: calc(max(env(safe-area-inset-top, 0px), 44px) + 8px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-l: env(safe-area-inset-left, 0px);
+      --safe-r: env(safe-area-inset-right, 0px);
+
+      /* Riserva dedicata sotto la tab bar (base + safe-area bottom) */
+      --tab-h-base: 44px;
+      /* leggermente >48px per iPhone con Home Indicator */
+      --tab-reserve: calc(var(--tab-h-base) + var(--safe-b));
+      --f-ui: 'Barlow', system-ui, sans-serif;
+      --f-num: 'Barlow Condensed', system-ui, sans-serif;
+    }
+
+    /* ════════════════════════════════════════
+   RESET
+════════════════════════════════════════ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    html,
+    body {
+      height: 100%;
+      width: 100%;
+      background: var(--bg);
+      color: var(--txt);
+      font-family: var(--f-ui);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      overscroll-behavior: none
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+
+    /* Fascia nera sotto status bar / Dynamic Island: abbassa tutto il contenuto sotto */
+    #top-safe-area {
+      flex-shrink: 0;
+      width: 100%;
+      background: var(--bg);
+      height: var(--top-black-h);
+      min-height: var(--top-black-h);
+    }
+
+    input,
+    button,
+    select {
+      font-family: var(--f-ui);
+      -webkit-appearance: none;
+      appearance: none
+    }
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none
+    }
+
+    /* ════════════════════════════════════════
+   LAYOUT
+   ─────────────────────────────────────
+   Proporzioni verticali (su 100dvh):
+   • scheda  → flex: 1 1 0    (spazio residuo, scorre)
+   • timer   → flex-shrink:0  (altezza determinata dal contenuto)
+════════════════════════════════════════ */
+    #app {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 8px 10px 0 10px;
+      gap: 8px;
+    }
+
+    /* ── Blocco base ── */
+    .blk {
+      background: var(--c1);
+      border-radius: var(--r-xl);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--sep);
+      flex-shrink: 0;
+    }
+
+    .blk-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--sep);
+      flex-shrink: 0
+    }
+
+    .blk-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--txt3)
+    }
+
+    /* ── Blocco 1: SCHEDA — cresce, scorre internamente ── */
+    #workout-blk {
+      flex: 1 1 0;
+      /* prende tutto lo spazio residuo */
+      min-height: 0;
+      /* permette al flex di ridursi */
+    }
+
+    #workout-blk .blk-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding: 10px 12px;
+      min-height: 0;
+    }
+
+    #workout-blk .blk-body::-webkit-scrollbar {
+      width: 2px
+    }
+
+    #workout-blk .blk-body::-webkit-scrollbar-thumb {
+      background: var(--c4);
+      border-radius: 1px
+    }
+
+    /* ── Blocco 2: TIMER — altezza fissa, niente scroll ── */
+    #timer-blk {
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    /* Pulsanti */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      font-family: var(--f-ui);
+      font-weight: 600;
+      border-radius: var(--r-m);
+      transition: transform .1s, opacity .1s
+    }
+
+    .btn:active {
+      transform: scale(.91);
+      opacity: .7
+    }
+
+    .btn-xs {
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 7px
+    }
+
+    .btn-sm {
+      font-size: 13px;
+      padding: 7px 13px
+    }
+
+    .btn-md {
+      font-size: 14px;
+      padding: 10px 18px
+    }
+
+    .btn-ghost {
+      background: var(--c3);
+      color: var(--txt2)
+    }
+
+    .btn-accent {
+      background: var(--txt);
+      color: #000
+    }
+
+    .btn-sp {
+      background: var(--txt);
+      color: #000
+    }
+
+    .btn-green {
+      background: var(--c4);
+      color: var(--txt);
+      border: 1px solid var(--c5)
+    }
+
+    /* Start */
+    .btn-red {
+      background: var(--c3);
+      color: var(--txt2);
+      border: 1px solid var(--c4)
+    }
+
+    /* Pausa/Reset */
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--c4);
+      color: var(--txt2)
+    }
+
+    /* ════════════════════════════════════════
+   BLOCCO 1 — SCHEDE
+════════════════════════════════════════ */
+    #plan-tabs-wrap {
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--sep)
+    }
+
+    #plan-tabs {
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 6px 12px 0;
+      gap: 4px
+    }
+
+    #plan-tabs::-webkit-scrollbar {
+      display: none
+    }
+
+    .plan-tab {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px 7px;
+      border-radius: var(--r-s) var(--r-s) 0 0;
+      background: transparent;
+      color: var(--txt3);
+      border: 1px solid transparent;
+      border-bottom: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color .15s, background .15s;
+      position: relative
+    }
+
+    .plan-tab.active {
+      background: var(--c2);
+      color: var(--txt);
+      border-color: var(--sep)
+    }
+
+    .plan-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--c2)
+    }
+
+    #btn-new-plan {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--c3);
+      border: none;
+      color: var(--txt2);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 4px;
+      margin-bottom: 6px;
+      transition: background .15s, transform .1s
+    }
+
+    #btn-new-plan:active {
+      transform: scale(.88);
+      background: var(--c4);
+      color: var(--txt)
+    }
+
+    #plan-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--sep)
+    }
+
+    #plan-name-display {
+      font-size: 14px;
+      font-weight: 700;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .plan-action-btns {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0
+    }
+
+    #add-row {
+      display: grid;
+      grid-template-columns: 1fr 38px 38px 38px 52px auto;
+      gap: 5px;
+      align-items: center;
+      margin-bottom: 10px
+    }
+
+    .inp {
+      background: var(--c2);
+      border: 1px solid var(--c3);
+      border-radius: var(--r-s);
+      color: var(--txt);
+      font-size: 13px;
+      padding: 7px 8px;
+      width: 100%;
+      outline: none;
+      text-align: center
+    }
+
+    .inp:focus {
+      border-color: var(--txt2);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, .08)
+    }
+
+    #inp-name {
+      text-align: left
+    }
+
+    .tbl-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 0 -2px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      white-space: nowrap
+    }
+
+    thead th {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--txt3);
+      padding: 4px 8px 6px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      background: var(--c2);
+      z-index: 1
+    }
+
+    thead th:first-child {
+      text-align: left
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--sep);
+      transition: background .15s
+    }
+
+    tbody tr:last-child {
+      border-bottom: none
+    }
+
+    tbody tr:active {
+      background: var(--c2)
+    }
+
+    td {
+      padding: 6px 7px;
+      vertical-align: middle;
+      text-align: center
+    }
+
+    td:first-child {
+      text-align: left
+    }
+
+    .td-name {
+      font-size: 12px;
+      font-weight: 600;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .td-val {
+      font-family: var(--f-num);
+      font-size: 13px;
+      font-weight: 600
+    }
+
+    .td-peso .td-val {
+      color: var(--txt)
+    }
+
+    .td-actions {
+      display: flex;
+      gap: 3px;
+      justify-content: flex-end
+    }
+
+    .badge-rir {
+      display: inline-block;
+      background: var(--c3);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--txt2)
+    }
+
+    .empty-tbl {
+      text-align: center;
+      color: var(--txt3);
+      font-size: 12px;
+      padding: 18px 0;
+      display: none
+    }
+
+    .peso-cell {
+      cursor: pointer;
+      position: relative
+    }
+
+    .peso-cell input {
+      position: absolute;
+      inset: 0;
+      background: var(--c2);
+      border: 1px solid var(--c5);
+      border-radius: var(--r-s);
+      color: var(--txt);
+      font-family: var(--f-num);
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      padding: 0 4px;
+      width: 100%;
+      height: 100%;
+      display: none;
+      outline: none
+    }
+
+    /* ════════════════════════════════════════
+   BLOCCO 2 — TIMER (compatto, orizzontale)
+   Anello piccolo a sx, controlli a dx.
+════════════════════════════════════════ */
+    #timer-blk .blk-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow: hidden;
+      padding: 8px 14px 10px;
+    }
+
+    #timer-blk .timer-state-wrap {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      flex-shrink: 0;
+      min-height: 12px;
+    }
+
+    #timer-blk #timer-state-lbl {
+      font-size: 9px;
+      color: var(--txt3);
+      letter-spacing: .04em;
+    }
+
+    #timer-blk .timer-inner {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #timer-face {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* r=32 → circonferenza = 2π·32 ≈ 201.06 */
+    #t-track {
+      fill: none;
+      stroke: var(--c3);
+      stroke-width: 4
+    }
+
+    #t-fill {
+      fill: none;
+      stroke: var(--txt);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 201.06;
+      stroke-dashoffset: 201.06;
+      transition: stroke-dashoffset .6s linear, stroke .3s;
+      transform-origin: 50% 50%;
+      transform: rotate(-90deg)
+    }
+
+    #timer-num {
+      position: absolute;
+      font-family: var(--f-num);
+      font-size: clamp(18px, 6vw, 22px);
+      font-weight: 800;
+      letter-spacing: -.02em;
+      color: var(--txt);
+      transition: color .3s;
+      white-space: nowrap;
+    }
+
+    @keyframes flash {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0
+      }
+    }
+
+    #timer-num.done {
+      animation: flash .5s ease-in-out 4;
+      color: var(--txt)
+    }
+
+    #timer-num.urgent {
+      color: var(--accent2)
+    }
+
+    #timer-right {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1
+    }
+
+    /* Tutte e 4 le righe usano la stessa griglia a 4 colonne uguali
+   così i bottoni preset hanno esattamente la stessa larghezza di Start/Reset */
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .timer-ctrl {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .preset-row .btn,
+    .timer-ctrl .btn {
+      justify-content: center;
+      width: 100%
+    }
+
+    /* ════════════════════════════════════════
+   OVERLAYS
+════════════════════════════════════════ */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      padding-bottom: var(--safe-b);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .22s
+    }
+
+    .overlay.open {
+      opacity: 1;
+      pointer-events: all
+    }
+
+    .sheet {
+      width: 100%;
+      background: var(--c1);
+      border-radius: var(--r-xl) var(--r-xl) 0 0;
+      padding: 16px 18px calc(var(--safe-b)+14px);
+      transform: translateY(110%);
+      transition: transform .28s cubic-bezier(.32, .72, 0, 1);
+      border-top: 1px solid var(--sep)
+    }
+
+    .overlay.open .sheet {
+      transform: translateY(0)
+    }
+
+    .sheet-handle {
+      width: 32px;
+      height: 4px;
+      background: var(--c4);
+      border-radius: 2px;
+      margin: 0 auto 14px
+    }
+
+    .sheet-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 14px
+    }
+
+    .field {
+      margin-bottom: 10px
+    }
+
+    .field label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--txt3);
+      display: block;
+      margin-bottom: 4px
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--c2);
+      border: 1px solid var(--c3);
+      border-radius: var(--r-m);
+      padding: 11px 13px;
+      color: var(--txt);
+      font-size: 15px;
+      outline: none
+    }
+
+    .field input:focus {
+      border-color: var(--txt2);
+      box-shadow: 0 0 0 2.5px rgba(255, 255, 255, .07)
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8px
+    }
+
+    .sheet-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px
+    }
+
+    .sheet-btns .btn {
+      flex: 1;
+      padding: 13px
+    }
+
+    /* Plans overlay */
+    #plans-overlay {
+      z-index: 300
+    }
+
+    .plans-sheet {
+      width: 100%;
+      background: var(--c1);
+      border-radius: var(--r-xl) var(--r-xl) 0 0;
+      padding: 16px 0 calc(var(--safe-b)+14px);
+      transform: translateY(110%);
+      transition: transform .28s cubic-bezier(.32, .72, 0, 1);
+      border-top: 1px solid var(--sep);
+      max-height: 80dvh;
+      display: flex;
+      flex-direction: column
+    }
+
+    #plans-overlay.open .plans-sheet {
+      transform: translateY(0)
+    }
+
+    .plans-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px 12px;
+      flex-shrink: 0
+    }
+
+    .plans-title {
+      font-size: 17px;
+      font-weight: 700
+    }
+
+    .plans-list {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+      padding: 0 14px
+    }
+
+    .plan-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 4px;
+      border-bottom: 1px solid var(--sep)
+    }
+
+    .plan-item:last-child {
+      border-bottom: none
+    }
+
+    .plan-item-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--c3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0
+    }
+
+    .plan-item.is-active .plan-item-icon {
+      background: var(--c4)
+    }
+
+    .plan-item-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .plan-item-name {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .plan-item.is-active .plan-item-name {
+      color: var(--txt)
+    }
+
+    .plan-item-meta {
+      font-size: 11px;
+      color: var(--txt3);
+      margin-top: 2px
+    }
+
+    .plan-item-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0
+    }
+
+    .plan-check {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      color: var(--txt2);
+      font-size: 16px;
+      display: none
+    }
+
+    .plan-item.is-active .plan-check {
+      display: block
+    }
+
+    .plan-item .rename-inp {
+      background: var(--c2);
+      border: 1px solid var(--txt3);
+      border-radius: var(--r-s);
+      color: var(--txt);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 8px;
+      outline: none;
+      width: 100%;
+      display: none
+    }
+
+    .plan-item.renaming .plan-item-name {
+      display: none
+    }
+
+    .plan-item.renaming .rename-inp {
+      display: block
+    }
+
+    /* ════════════════════════════════════════
+   TAB BAR — pill style come in foto
+════════════════════════════════════════ */
+
+    /* Wrapper fisso in fondo */
+    #tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 16px calc(var(--safe-b) + 0px);
+      background: var(--bg);
+      z-index: 100;
+      gap: 12px;
+    }
+
+    /* Pill contenitore dei tab */
+    #tab-pill {
+      display: flex;
+      align-items: center;
+      background: var(--c2);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 2px;
+      border: 1px solid var(--sep);
+    }
+
+    /* Singolo tab */
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 5px 18px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      transition: background .18s;
+      min-width: 76px;
+    }
+
+    .tab-item.active {
+      background: var(--c4);
+    }
+
+    .tab-item svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--txt2);
+      transition: fill .15s;
+    }
+
+    .tab-item.active svg {
+      fill: var(--txt);
+    }
+
+    .tab-item span {
+      font-family: var(--f-ui);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--txt2);
+      letter-spacing: .01em;
+      transition: color .15s;
+    }
+
+    .tab-item.active span {
+      color: var(--txt);
+    }
+
+    /* Spacer che impedisce ai blocchi di finire sotto la tab bar */
+    #tab-spacer {
+      flex-shrink: 0;
+      height: var(--tab-reserve);
+    }
+
+    /* ════════════════════════════════════════
+   PAGINA STORICO
+════════════════════════════════════════ */
+    #page-history {
+      display: none;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: calc(var(--tab-reserve) + 2px);
+      padding: calc(var(--top-black-h) + 8px) 10px 0;
+      background: var(--bg);
+      z-index: 50;
+      gap: 8px;
+    }
+
+    #page-history.active {
+      display: flex;
+    }
+
+    /* Header pagina storico */
+    #history-page-head {
+      flex-shrink: 0;
+      padding: 4px 4px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #history-page-title {
+      font-family: var(--f-num);
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -.01em;
+      color: var(--txt);
+    }
+
+    #history-count {
+      font-size: 11px;
+      color: var(--txt3);
+    }
+
+    /* Lista storico nella pagina */
+    #history-page-list {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    #history-page-list::-webkit-scrollbar {
+      width: 2px
+    }
+
+    #history-page-list::-webkit-scrollbar-thumb {
+      background: var(--c4);
+      border-radius: 1px
+    }
+
+    /* Card sessione */
+    .session-card {
+      background: var(--c1);
+      border-radius: var(--r-l);
+      border: 1px solid var(--sep);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .session-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .session-card-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--txt);
+    }
+
+    .session-card-date {
+      font-size: 11px;
+      color: var(--txt3);
+      font-family: var(--f-num);
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .session-card-exlist {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .session-ex-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto auto;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .session-ex-name {
+      font-weight: 600;
+      color: var(--txt);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .session-ex-val {
+      font-family: var(--f-num);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--txt2);
+      white-space: nowrap;
+    }
+
+    .session-ex-label {
+      font-size: 9px;
+      color: var(--txt3);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .session-card-delete {
+      background: none;
+      border: none;
+      color: var(--txt3);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 4px;
+      align-self: flex-start;
+      transition: color .15s;
+    }
+
+    .session-card-delete:active {
+      color: var(--txt);
+    }
+
+    .history-page-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--txt3);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .history-page-empty svg {
+      opacity: .2;
+    }
+
+    #workout-footer {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px 10px;
+      border-top: 1px solid var(--sep);
+      gap: 10px;
+    }
+
+    #save-status {
+      font-size: 11px;
+      color: var(--txt3);
+      letter-spacing: .02em;
+      transition: color .3s;
+      flex: 1;
+    }
+
+    #save-status.ok {
+      color: var(--txt2);
+    }
+
+    #save-status.err {
+      color: var(--accent2);
+    }
+
+    #btn-save {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--r-m);
+      background: var(--txt);
+      color: #000;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform .1s, opacity .1s, background .25s, color .25s;
+    }
+
+    #btn-save:active {
+      transform: scale(.92);
+      opacity: .8;
+    }
+
+    #btn-save.saving {
+      background: var(--c4);
+      color: var(--txt2);
+      pointer-events: none;
+    }
+
+    #btn-save.saved {
+      background: var(--c3);
+      color: var(--txt2);
+      pointer-events: none;
+    }
+
+    #btn-save svg {
+      flex-shrink: 0;
+      transition: transform .3s;
+    }
+
+    #btn-save.saved svg {
+      transform: scale(1.15);
+    }
+
+    /* ── Sheet storico sessioni ── */
+    #history-overlay {
+      z-index: 300;
+    }
+
+    .history-sheet {
+      width: 100%;
+      background: var(--c1);
+      border-radius: var(--r-xl) var(--r-xl) 0 0;
+      padding: 16px 0 calc(var(--safe-b)+14px);
+      transform: translateY(110%);
+      transition: transform .28s cubic-bezier(.32, .72, 0, 1);
+      border-top: 1px solid var(--sep);
+      max-height: 75dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #history-overlay.open .history-sheet {
+      transform: translateY(0);
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px 12px;
+      flex-shrink: 0;
+    }
+
+    .history-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .history-list {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+      padding: 0 14px;
+    }
+
+    .history-list::-webkit-scrollbar {
+      width: 2px
+    }
+
+    .history-list::-webkit-scrollbar-thumb {
+      background: var(--c4);
+      border-radius: 1px
+    }
+
+    .history-item {
+      padding: 12px 4px;
+      border-bottom: 1px solid var(--sep);
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-item-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .history-item-meta {
+      font-size: 11px;
+      color: var(--txt3);
+      letter-spacing: .03em;
+    }
+
+    .history-item-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--txt);
+    }
+
+    .history-exlist {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .history-ex-pill {
+      background: var(--c3);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10px;
+      color: var(--txt2);
+    }
+
+    .history-empty {
+      text-align: center;
+      color: var(--txt3);
+      font-size: 12px;
+      padding: 28px 0;
+    }
+
+    #btn-add-plan-full {
+      margin: 12px 14px 0;
+      width: calc(100% - 28px);
+      padding: 13px;
+      border-radius: var(--r-l);
+      font-size: 14px
+    }
+
+    /* ════════════════════════════════════════
+   PAGINA GRAFICO
+════════════════════════════════════════ */
+    #page-charts {
+      display: none;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: calc(var(--tab-reserve) + 2px);
+      padding: calc(var(--top-black-h) + 8px) 10px 0;
+      background: var(--bg);
+      z-index: 50;
+      gap: 8px;
+    }
+
+    #page-charts.active {
+      display: flex;
+    }
+
+    #charts-page-head {
+      flex-shrink: 0;
+      padding: 4px 4px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #charts-page-title {
+      font-family: var(--f-num);
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -.01em;
+      color: var(--txt);
+    }
+
+    /* Selettore esercizio */
+    #chart-exercise-wrap {
+      flex-shrink: 0;
+      display: flex;
+      gap: 6px;
+      padding: 0 4px 4px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    #chart-exercise-wrap::-webkit-scrollbar {
+      display: none
+    }
+
+    .chart-ex-pill {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--c2);
+      color: var(--txt2);
+      border: 1px solid var(--sep);
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+
+    .chart-ex-pill.active {
+      background: var(--c4);
+      color: var(--txt);
+      border-color: var(--c5);
+    }
+
+    /* Contenitore canvas */
+    #chart-container {
+      flex: 1;
+      min-height: 0;
+      background: var(--c1);
+      border-radius: var(--r-xl);
+      border: 1px solid var(--sep);
+      padding: 16px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #chart-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    #chart-ex-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--txt);
+    }
+
+    #chart-stat {
+      font-size: 11px;
+      color: var(--txt3);
+      font-family: var(--f-num);
+    }
+
+    #chart-canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+
+    #chart-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .chart-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--txt3);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .chart-empty svg {
+      opacity: .2;
+    }
+
+    /* Info cards sotto il grafico */
+    #chart-info {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .chart-info-card {
+      background: var(--c1);
+      border-radius: var(--r-l);
+      border: 1px solid var(--sep);
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .chart-info-val {
+      font-family: var(--f-num);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--txt);
+    }
+
+    .chart-info-lbl {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--txt3);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="top-safe-area" aria-hidden="true"></div>
+
+  <div id="app">
+
+    <!-- ══════════════════════════════════
+       BLOCCO 1 — SCHEDE ALLENAMENTO
+  ══════════════════════════════════ -->
+    <div class="blk" id="workout-blk">
+      <div id="plan-tabs-wrap">
+        <div id="plan-tabs">
+          <button id="btn-new-plan" onclick="openPlansSheet()" title="Gestisci schede">＋</button>
+        </div>
+      </div>
+      <div id="plan-actions">
+        <div id="plan-name-display">Scheda A</div>
+        <div class="plan-action-btns">
+          <button class="btn btn-outline btn-xs" onclick="openPlansSheet()">Schede</button>
+          <button class="btn btn-accent  btn-xs" onclick="openExSheet()">+ Esercizio</button>
+        </div>
+      </div>
+      <div class="blk-body">
+        <div id="add-row">
+          <input class="inp" id="inp-name" type="text" placeholder="Esercizio" autocomplete="off" autocorrect="off" />
+          <input class="inp" id="inp-sets" type="number" placeholder="S" min="1" max="20" />
+          <input class="inp" id="inp-reps" type="number" placeholder="R" min="1" max="99" />
+          <input class="inp" id="inp-rir" type="number" placeholder="RIR" min="0" max="5" />
+          <input class="inp" id="inp-weight" type="number" placeholder="kg" min="0" step=".5" />
+          <button class="btn btn-accent btn-xs" onclick="addExercise()" style="white-space:nowrap">Aggiungi</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="ex-table">
+            <thead>
+              <tr>
+                <th style="text-align:left">Esercizio</th>
+                <th>Set</th>
+                <th>Rep</th>
+                <th>RIR</th>
+                <th>Peso</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="ex-body"></tbody>
+          </table>
+          <div class="empty-tbl" id="empty-lbl">Nessun esercizio — premi + per iniziare</div>
+        </div>
+      </div>
+
+      <!-- Footer salvataggio sessione -->
+      <div id="workout-footer">
+        <span id="save-status">auto-salvato</span>
+        <button id="btn-save" onclick="handleSave()">
+          <!-- Icona floppy/checkmark — cambia via JS -->
+          <svg id="save-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z" />
+          </svg>
+          <span id="save-label">Salva sessione</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+       BLOCCO 2 — TIMER RECUPERO
+  ══════════════════════════════════ -->
+    <div class="blk" id="timer-blk">
+      <div class="blk-body">
+        <div class="timer-state-wrap">
+          <span id="timer-state-lbl">pronto</span>
+        </div>
+        <div class="timer-inner">
+          <div id="timer-face">
+            <svg width="76" height="76" viewBox="0 0 76 76" overflow="visible">
+              <circle id="t-track" cx="38" cy="38" r="32" />
+              <circle id="t-fill" cx="38" cy="38" r="32" />
+            </svg>
+            <div id="timer-num">01:00</div>
+          </div>
+          <div id="timer-right">
+            <div class="preset-row">
+              <button class="btn btn-ghost btn-xs" onclick="setTimer(60)">60s</button>
+              <button class="btn btn-ghost btn-xs" onclick="setTimer(90)">90s</button>
+              <button class="btn btn-ghost btn-xs" onclick="setTimer(120)">2m</button>
+              <button class="btn btn-ghost btn-xs" onclick="setTimer(180)">3m</button>
+            </div>
+            <div class="timer-ctrl">
+              <button class="btn btn-green btn-sm" id="btn-timer" onclick="timerStartPause()">▶ Start</button>
+              <button class="btn btn-red   btn-sm" onclick="timerReset()">↺ Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spacer per non finire sotto la tab bar -->
+    <div id="tab-spacer"></div>
+
+  </div><!-- fine #app -->
+
+  <!-- ══════════════════════════════════
+     PAGINA STORICO (fuori da #app,
+     ma stessa area visiva)
+══════════════════════════════════ -->
+  <div id="page-history">
+    <div id="history-page-head">
+      <div id="history-page-title">Storico</div>
+      <span id="history-count"></span>
+    </div>
+    <div id="history-page-list"></div>
+  </div>
+
+  <!-- ══════════════════════════════════
+     PAGINA GRAFICO
+══════════════════════════════════ -->
+  <div id="page-charts">
+    <div id="charts-page-head">
+      <div id="charts-page-title">Grafico</div>
+    </div>
+    <div id="chart-exercise-wrap"></div>
+    <div id="chart-container">
+      <div id="chart-header">
+        <div id="chart-ex-label"></div>
+        <div id="chart-stat"></div>
+      </div>
+      <div id="chart-canvas-wrap">
+        <canvas id="chart-canvas"></canvas>
+      </div>
+    </div>
+    <div id="chart-info"></div>
+  </div>
+
+  <!-- ══════════════════════════════════
+     TAB BAR
+══════════════════════════════════ -->
+  <div id="tab-bar">
+    <div id="tab-pill">
+
+      <!-- Tab: Home -->
+      <button class="tab-item active" id="tab-home" onclick="switchTab('home')">
+        <svg viewBox="0 0 24 24">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+        </svg>
+        <span>Allenamento</span>
+      </button>
+
+      <!-- Tab: Storico -->
+      <button class="tab-item" id="tab-history" onclick="switchTab('history')">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" />
+        </svg>
+        <span>Storico</span>
+      </button>
+
+      <!-- Tab: Grafico -->
+      <button class="tab-item" id="tab-charts" onclick="switchTab('charts')">
+        <svg viewBox="0 0 24 24">
+          <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" />
+        </svg>
+        <span>Grafico</span>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+     OVERLAY — Gestione schede
+══════════════════════════════════ -->
+  <div class="overlay" id="plans-overlay" onclick="handlePlansOverlay(event)">
+    <div class="plans-sheet">
+      <div style="padding:0 18px">
+        <div class="sheet-handle"></div>
+      </div>
+      <div class="plans-header">
+        <div class="plans-title">Le mie schede</div>
+        <button class="btn btn-ghost btn-xs" onclick="closePlansSheet()">Chiudi</button>
+      </div>
+      <div class="plans-list" id="plans-list"></div>
+      <button class="btn btn-accent btn-md" id="btn-add-plan-full" onclick="createNewPlan()">＋ Nuova scheda</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+     OVERLAY — Aggiunta esercizio
+══════════════════════════════════ -->
+  <div class="overlay" id="ex-overlay" onclick="handleExOverlay(event)">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title" id="ex-sheet-ttl">Nuovo Esercizio</div>
+      <input type="hidden" id="edit-idx" value="-1" />
+      <div class="field">
+        <label>Nome Esercizio</label>
+        <input type="text" id="s-name" placeholder="es. Squat" autocomplete="off" autocorrect="off" />
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Serie</label><input type="number" id="s-sets" placeholder="4" min="1" max="20" />
+        </div>
+        <div class="field"><label>Rip.</label><input type="number" id="s-reps" placeholder="8" min="1" max="99" /></div>
+        <div class="field"><label>RIR</label><input type="number" id="s-rir" placeholder="2" min="0" max="5" /></div>
+        <div class="field"><label>Peso kg</label><input type="number" id="s-weight" placeholder="100" min="0"
+            step=".5" /></div>
+      </div>
+      <div class="sheet-btns">
+        <button class="btn btn-ghost btn-md" onclick="closeExSheet()">Annulla</button>
+        <button class="btn btn-accent btn-md" onclick="saveExSheet()">Salva</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+  <script>
+    'use strict';
+
+    /* ════════════════════════════════════════
+       BLOCCO 1 — SCHEDE (invariato da v3)
+    ════════════════════════════════════════ */
+    const LS_PLANS = 'gymhub_v1_plans';
+    const LS_ACTIVE = 'gymhub_v1_active';
+    let plans = [], activeId = null;
+    const PLAN_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function savePlans() { localStorage.setItem(LS_PLANS, JSON.stringify(plans)); localStorage.setItem(LS_ACTIVE, activeId); }
+    function loadPlans() {
+      try { plans = JSON.parse(localStorage.getItem(LS_PLANS)) || []; } catch { plans = []; }
+      activeId = localStorage.getItem(LS_ACTIVE) || null;
+      if (plans.length === 0) { const d = { id: uid(), name: 'Scheda A', exercises: [] }; plans.push(d); activeId = d.id; savePlans(); }
+      if (!plans.find(p => p.id === activeId)) { activeId = plans[0].id; savePlans(); }
+    }
+    function activePlan() { return plans.find(p => p.id === activeId) || plans[0]; }
+    function getExercises() { return activePlan().exercises; }
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+    function renderTabs() {
+      const wrap = document.getElementById('plan-tabs');
+      wrap.querySelectorAll('.plan-tab').forEach(t => t.remove());
+      const addBtn = document.getElementById('btn-new-plan');
+      plans.forEach(p => {
+        const tab = document.createElement('button');
+        tab.className = 'plan-tab' + (p.id === activeId ? ' active' : '');
+        tab.textContent = p.name;
+        tab.onclick = () => switchPlan(p.id);
+        wrap.insertBefore(tab, addBtn);
+      });
+      const ap = activePlan();
+      document.getElementById('plan-name-display').textContent = ap.name;
+      const at = wrap.querySelector('.plan-tab.active');
+      if (at) at.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+    function switchPlan(id) {
+      activeId = id; savePlans(); renderTabs(); renderTable();
+      const blk = document.getElementById('workout-blk');
+      blk.style.opacity = '.5'; blk.style.transform = 'scale(.98)';
+      requestAnimationFrame(() => {
+        blk.style.transition = 'opacity .2s,transform .2s';
+        blk.style.opacity = '1'; blk.style.transform = 'scale(1)';
+        setTimeout(() => { blk.style.transition = ''; }, 220);
+      });
+    }
+    function openPlansSheet() { renderPlansList(); document.getElementById('plans-overlay').classList.add('open'); }
+    function closePlansSheet() { document.getElementById('plans-overlay').classList.remove('open'); }
+    function handlePlansOverlay(e) { if (e.target === document.getElementById('plans-overlay')) closePlansSheet(); }
+    function renderPlansList() {
+      document.getElementById('plans-list').innerHTML = plans.map((p) => `
+    <div class="plan-item${p.id === activeId ? ' is-active' : ''}" id="pi-${p.id}">
+      <div class="plan-item-icon">${plans.indexOf(p) + 1}</div>
+      <div class="plan-item-info" onclick="selectPlanFromSheet('${p.id}')">
+        <div class="plan-item-name" id="pin-${p.id}">${esc(p.name)}</div>
+        <input class="rename-inp" id="rinp-${p.id}" value="${esc(p.name)}"
+          onblur="commitRename('${p.id}')"
+          onkeydown="if(event.key==='Enter')commitRename('${p.id}');if(event.key==='Escape')cancelRename('${p.id}')"
+          onclick="event.stopPropagation()"/>
+        <div class="plan-item-meta">${p.exercises.length} esercizi</div>
+      </div>
+      <span class="plan-check">✓</span>
+      <div class="plan-item-actions">
+        <button class="btn btn-outline btn-xs" onclick="startRename('${p.id}')">✏</button>
+        ${plans.length > 1
+          ? `<button class="btn btn-red btn-xs" onclick="deletePlan('${p.id}')">✕</button>`
+          : `<button class="btn btn-outline btn-xs" style="opacity:.3" disabled>✕</button>`}
+      </div>
+    </div>`).join('');
+    }
+    function selectPlanFromSheet(id) { switchPlan(id); renderPlansList(); setTimeout(closePlansSheet, 180); }
+    function createNewPlan() {
+      const name = 'Scheda ' + (PLAN_LETTERS[plans.length] || (plans.length + 1));
+      const p = { id: uid(), name, exercises: [] };
+      plans.push(p); activeId = p.id; savePlans(); renderTabs(); renderTable(); renderPlansList();
+      setTimeout(() => startRename(p.id), 50);
+    }
+    function startRename(id) { const item = document.getElementById(`pi-${id}`); if (!item) return; item.classList.add('renaming'); const inp = document.getElementById(`rinp-${id}`); inp.focus(); inp.select(); }
+    function commitRename(id) { const inp = document.getElementById(`rinp-${id}`); const item = document.getElementById(`pi-${id}`); if (!item) return; const val = inp.value.trim(); if (val) { const p = plans.find(x => x.id === id); if (p) { p.name = val; savePlans(); renderTabs(); renderPlansList(); } } item.classList.remove('renaming'); }
+    function cancelRename(id) { const item = document.getElementById(`pi-${id}`); const p = plans.find(x => x.id === id); if (item && p) { document.getElementById(`rinp-${id}`).value = p.name; item.classList.remove('renaming'); } }
+    function deletePlan(id) { if (plans.length <= 1) return; const idx = plans.findIndex(p => p.id === id); plans.splice(idx, 1); if (activeId === id) activeId = plans[Math.max(0, idx - 1)].id; savePlans(); renderTabs(); renderTable(); renderPlansList(); }
+
+    function renderTable() {
+      const exercises = getExercises(); const tbody = document.getElementById('ex-body'); const empty = document.getElementById('empty-lbl');
+      if (exercises.length === 0) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = exercises.map((ex, i) => `
+    <tr id="row-${i}">
+      <td class="td-name">${esc(ex.name)}</td>
+      <td><span class="td-val">${esc(ex.sets)}</span></td>
+      <td><span class="td-val">${esc(ex.reps)}</span></td>
+      <td><span class="badge-rir">${esc(ex.rir)}</span></td>
+      <td class="peso-cell td-peso" id="peso-${i}" onclick="editPesoInline(${i})">
+        <span class="td-val">${esc(ex.weight)}<small style="font-size:9px;color:var(--txt3);margin-left:2px">kg</small></span>
+        <input type="number" step=".5" min="0" id="peso-inp-${i}"
+          onblur="commitPeso(${i})" onkeydown="if(event.key==='Enter')commitPeso(${i})" onclick="event.stopPropagation()"/>
+      </td>
+      <td class="td-actions">
+        <button class="btn btn-outline btn-xs" onclick="openExSheet(${i})">✏</button>
+        <button class="btn btn-red    btn-xs" onclick="delEx(${i})">✕</button>
+      </td>
+    </tr>`).join('');
+    }
+    function addExercise() {
+      const name = document.getElementById('inp-name').value.trim();
+      const sets = document.getElementById('inp-sets').value || '—'; const reps = document.getElementById('inp-reps').value || '—';
+      const rir = document.getElementById('inp-rir').value !== '' ? document.getElementById('inp-rir').value : '—';
+      const weight = document.getElementById('inp-weight').value || '—';
+      if (!name) { document.getElementById('inp-name').style.borderColor = 'var(--txt2)'; document.getElementById('inp-name').focus(); return; }
+      document.getElementById('inp-name').style.borderColor = '';
+      getExercises().push({ name, sets, reps, rir, weight }); savePlans(); renderTable();
+      ['inp-name', 'inp-sets', 'inp-reps', 'inp-rir', 'inp-weight'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('inp-name').focus();
+    }
+    function delEx(i) { getExercises().splice(i, 1); savePlans(); renderTable(); }
+    function editPesoInline(i) { const inp = document.getElementById(`peso-inp-${i}`); inp.style.display = 'block'; inp.value = getExercises()[i].weight !== '—' ? getExercises()[i].weight : ''; inp.focus(); inp.select(); }
+    function commitPeso(i) { const inp = document.getElementById(`peso-inp-${i}`); if (inp.value.trim() !== '') { getExercises()[i].weight = inp.value.trim(); savePlans(); } inp.style.display = 'none'; renderTable(); }
+    function openExSheet(editIdx = -1) {
+      document.getElementById('edit-idx').value = editIdx;
+      document.getElementById('ex-sheet-ttl').textContent = editIdx >= 0 ? 'Modifica Esercizio' : 'Nuovo Esercizio';
+      if (editIdx >= 0) { const ex = getExercises()[editIdx]; document.getElementById('s-name').value = ex.name !== '—' ? ex.name : ''; document.getElementById('s-sets').value = ex.sets !== '—' ? ex.sets : ''; document.getElementById('s-reps').value = ex.reps !== '—' ? ex.reps : ''; document.getElementById('s-rir').value = ex.rir !== '—' ? ex.rir : ''; document.getElementById('s-weight').value = ex.weight !== '—' ? ex.weight : ''; }
+      else { ['s-name', 's-sets', 's-reps', 's-rir', 's-weight'].forEach(id => { document.getElementById(id).value = ''; }); }
+      document.getElementById('ex-overlay').classList.add('open');
+      setTimeout(() => document.getElementById('s-name').focus(), 300);
+    }
+    function closeExSheet() { document.getElementById('ex-overlay').classList.remove('open'); }
+    function handleExOverlay(e) { if (e.target === document.getElementById('ex-overlay')) closeExSheet(); }
+    function saveExSheet() {
+      const name = document.getElementById('s-name').value.trim();
+      if (!name) { document.getElementById('s-name').style.borderColor = 'var(--txt2)'; return; }
+      document.getElementById('s-name').style.borderColor = '';
+      const ex = { name, sets: document.getElementById('s-sets').value || '—', reps: document.getElementById('s-reps').value || '—', rir: document.getElementById('s-rir').value !== '' ? document.getElementById('s-rir').value : '—', weight: document.getElementById('s-weight').value || '—' };
+      const idx = parseInt(document.getElementById('edit-idx').value);
+      if (idx >= 0) { getExercises()[idx] = ex; } else { getExercises().push(ex); }
+      savePlans(); renderTable(); closeExSheet();
+    }
+    loadPlans(); renderTabs(); renderTable();
+
+    /* ════════════════════════════════════════
+       SALVATAGGIO SESSIONE
+       ─────────────────────────────────────
+       I dati sono già persistiti in tempo reale
+       su localStorage ad ogni modifica (savePlans).
+       handleSave crea uno SNAPSHOT con timestamp
+       della scheda corrente — utile per lo storico
+       e per confrontare le sessioni nel tempo.
+    
+       Struttura snapshot salvata:
+       {
+         id:        string  — uid univoco
+         ts:        number  — timestamp Unix ms
+         planId:    string  — id scheda
+         planName:  string  — nome scheda al momento del salvataggio
+         exercises: Array   — copia degli esercizi con i pesi usati
+       }
+       Chiave localStorage: 'gymhub_v1_sessions'
+    ════════════════════════════════════════ */
+    const LS_SESSIONS = 'gymhub_v1_sessions';
+
+    function loadSessions() {
+      try { return JSON.parse(localStorage.getItem(LS_SESSIONS)) || []; }
+      catch { return []; }
+    }
+    function saveSessions(sessions) {
+      localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions));
+    }
+
+    /* Stato UI del pulsante salva */
+    let saveTimer = null;
+    function setSaveState(state) {
+      const btn = document.getElementById('btn-save');
+      const lbl = document.getElementById('save-label');
+      const icon = document.getElementById('save-icon');
+      const status = document.getElementById('save-status');
+
+      // Reset classi
+      btn.classList.remove('saving', 'saved');
+
+      if (state === 'idle') {
+        // Icona floppy disk
+        icon.innerHTML = '<path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>';
+        lbl.textContent = 'Salva sessione';
+        status.textContent = 'auto-salvato';
+        status.className = '';
+      }
+      else if (state === 'saving') {
+        btn.classList.add('saving');
+        // Icona spinner simulata con puntini
+        icon.innerHTML = '<circle cx="12" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><circle cx="5" cy="12" r="3"/>';
+        lbl.textContent = 'Salvataggio…';
+        status.textContent = '';
+        status.className = '';
+      }
+      else if (state === 'saved') {
+        btn.classList.add('saved');
+        // Icona checkmark
+        icon.innerHTML = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>';
+        lbl.textContent = 'Salvato';
+        status.textContent = 'sessione registrata ✓';
+        status.className = 'ok';
+      }
+      else if (state === 'empty') {
+        // Nessun esercizio — errore leggero
+        status.textContent = 'aggiungi almeno un esercizio';
+        status.className = 'err';
+        // Shake del bottone
+        btn.style.transform = 'translateX(-4px)';
+        setTimeout(() => { btn.style.transform = 'translateX(4px)'; }, 80);
+        setTimeout(() => { btn.style.transform = ''; }, 160);
+      }
+    }
+
+    /**
+     * handleSave — cattura snapshot della scheda corrente e lo
+     * archivia in localStorage con timestamp.
+     * Simula una latenza asincrona di 600ms (mock API).
+     */
+    async function handleSave() {
+      const plan = activePlan();
+      const exercises = plan.exercises;
+
+      // Validazione: almeno un esercizio
+      if (!exercises || exercises.length === 0) {
+        setSaveState('empty');
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => setSaveState('idle'), 2500);
+        return;
+      }
+
+      setSaveState('saving');
+
+      // Snapshot della sessione corrente
+      const snapshot = {
+        id: uid(),
+        ts: Date.now(),
+        planId: plan.id,
+        planName: plan.name,
+        exercises: exercises.map(ex => ({ ...ex })), // copia shallow
+      };
+
+      // ── Mock API: simula latenza di rete ──
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Persisti snapshot
+      const sessions = loadSessions();
+      sessions.unshift(snapshot);            // più recente prima
+      if (sessions.length > 50) sessions.length = 50; // cap 50 sessioni
+      saveSessions(sessions);
+
+      setSaveState('saved');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => setSaveState('idle'), 2800);
+    }
+
+    /* ── Storico sessioni sheet ── */
+    function openHistorySheet() {
+      renderHistoryList();
+      document.getElementById('history-overlay').classList.add('open');
+    }
+    function closeHistorySheet() {
+      document.getElementById('history-overlay').classList.remove('open');
+    }
+    function handleHistoryOverlay(e) {
+      if (e.target === document.getElementById('history-overlay')) closeHistorySheet();
+    }
+
+    function renderHistoryList() {
+      const sessions = loadSessions();
+      const list = document.getElementById('history-list');
+
+      if (sessions.length === 0) {
+        list.innerHTML = '<div class="history-empty">Nessuna sessione salvata.<br>Premi "Salva sessione" per iniziare.</div>';
+        return;
+      }
+
+      list.innerHTML = sessions.map(s => {
+        const d = new Date(s.ts);
+        const date = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+        const time = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const pills = s.exercises.slice(0, 6).map(ex =>
+          `<span class="history-ex-pill">${esc(ex.name)}</span>`
+        ).join('');
+        const more = s.exercises.length > 6
+          ? `<span class="history-ex-pill">+${s.exercises.length - 6}</span>`
+          : '';
+        return `
+      <div class="history-item">
+        <div class="history-item-head">
+          <div class="history-item-name">${esc(s.planName)}</div>
+          <div class="history-item-meta">${date} · ${time}</div>
+        </div>
+        <div class="history-exlist">${pills}${more}</div>
+      </div>`;
+      }).join('');
+    }
+
+    /* Aggiorna status al caricamento */
+    setSaveState('idle');
+
+    /* ════════════════════════════════════════
+       NAVIGAZIONE TAB
+    ════════════════════════════════════════ */
+    let currentTab = 'home';
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const app = document.getElementById('app');
+      const pageHist = document.getElementById('page-history');
+      const pageCharts = document.getElementById('page-charts');
+      const tabHome = document.getElementById('tab-home');
+      const tabHistory = document.getElementById('tab-history');
+      const tabCharts = document.getElementById('tab-charts');
+
+      // Reset tutto
+      app.style.display = 'none';
+      pageHist.classList.remove('active');
+      pageCharts.classList.remove('active');
+      tabHome.classList.remove('active');
+      tabHistory.classList.remove('active');
+      tabCharts.classList.remove('active');
+
+      if (tab === 'home') {
+        app.style.display = 'flex';
+        tabHome.classList.add('active');
+      } else if (tab === 'history') {
+        pageHist.classList.add('active');
+        tabHistory.classList.add('active');
+        renderHistoryPage();
+      } else if (tab === 'charts') {
+        pageCharts.classList.add('active');
+        tabCharts.classList.add('active');
+        renderChartsPage();
+      }
+    }
+
+    /* ════════════════════════════════════════
+       PAGINA STORICO — RENDER
+    ════════════════════════════════════════ */
+    function renderHistoryPage() {
+      const sessions = loadSessions();
+      const list = document.getElementById('history-page-list');
+      const count = document.getElementById('history-count');
+
+      count.textContent = sessions.length > 0
+        ? `${sessions.length} session${sessions.length === 1 ? 'e' : 'i'}`
+        : '';
+
+      if (sessions.length === 0) {
+        list.innerHTML = `
+      <div class="history-page-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+        </svg>
+        <div>Nessuna sessione salvata.<br>Torna in Allenamento e premi <em>Salva sessione</em>.</div>
+      </div>`;
+        return;
+      }
+
+      list.innerHTML = sessions.map((s, idx) => {
+        const d = new Date(s.ts);
+        const date = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+        const time = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+        const exRows = s.exercises.map(ex => `
+      <div class="session-ex-row">
+        <span class="session-ex-name">${esc(ex.name)}</span>
+        <span class="session-ex-label">set</span>
+        <span class="session-ex-val">${esc(ex.sets)}</span>
+        <span class="session-ex-label">×</span>
+        <span class="session-ex-val">${esc(ex.reps)}${ex.weight && ex.weight !== '—' ? ' · ' + ex.weight + 'kg' : ''}</span>
+      </div>`).join('');
+
+        return `
+      <div class="session-card" id="sc-${s.id}">
+        <div class="session-card-head">
+          <div>
+            <div class="session-card-name">${esc(s.planName)}</div>
+            <div class="session-card-date">${date} · ${time}</div>
+          </div>
+          <button class="session-card-delete" onclick="deleteSession('${s.id}')" title="Elimina">✕</button>
+        </div>
+        <div class="session-card-exlist">${exRows}</div>
+      </div>`;
+      }).join('');
+    }
+
+    function deleteSession(id) {
+      const sessions = loadSessions().filter(s => s.id !== id);
+      saveSessions(sessions);
+      renderHistoryPage();
+    }
+
+    /* ════════════════════════════════════════
+       PAGINA GRAFICO — RENDER
+    ════════════════════════════════════════ */
+    let chartSelectedEx = null;
+
+    function getChartData() {
+      const sessions = loadSessions();
+      // Raccogli tutti i nomi esercizi unici dalle sessioni
+      const exMap = new Map(); // name → [{ts, weight, sets, reps}]
+      sessions.forEach(s => {
+        s.exercises.forEach(ex => {
+          const w = parseFloat(ex.weight);
+          if (isNaN(w)) return;
+          if (!exMap.has(ex.name)) exMap.set(ex.name, []);
+          exMap.get(ex.name).push({
+            ts: s.ts,
+            weight: w,
+            sets: ex.sets,
+            reps: ex.reps,
+            date: new Date(s.ts)
+          });
+        });
+      });
+      // Ordina ogni esercizio per data (dal meno recente)
+      exMap.forEach((arr) => arr.sort((a, b) => a.ts - b.ts));
+      return exMap;
+    }
+
+    function renderChartsPage() {
+      const exMap = getChartData();
+      const wrap = document.getElementById('chart-exercise-wrap');
+      const container = document.getElementById('chart-container');
+      const info = document.getElementById('chart-info');
+
+      if (exMap.size === 0) {
+        wrap.innerHTML = '';
+        container.innerHTML = `
+      <div class="chart-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>
+        </svg>
+        <div>Nessun dato disponibile.<br>Salva sessioni con pesi per vedere i grafici.</div>
+      </div>`;
+        info.innerHTML = '';
+        return;
+      }
+
+      const exNames = [...exMap.keys()];
+      if (!chartSelectedEx || !exMap.has(chartSelectedEx)) {
+        chartSelectedEx = exNames[0];
+      }
+
+      // Render pills esercizi
+      wrap.innerHTML = exNames.map(name =>
+        `<button class="chart-ex-pill${name === chartSelectedEx ? ' active' : ''}" onclick="selectChartEx('${esc(name).replace(/'/g, "\\'")}')">` +
+        `${esc(name)}</button>`
+      ).join('');
+
+      // Dati dell'esercizio selezionato
+      const data = exMap.get(chartSelectedEx);
+      renderChart(data);
+      renderChartInfo(data);
+    }
+
+    function selectChartEx(name) {
+      chartSelectedEx = name;
+      renderChartsPage();
+    }
+
+    function renderChart(data) {
+      const container = document.getElementById('chart-container');
+      container.innerHTML = `
+    <div id="chart-header">
+      <div id="chart-ex-label">${esc(chartSelectedEx)}</div>
+      <div id="chart-stat">${data.length} session${data.length === 1 ? 'e' : 'i'}</div>
+    </div>
+    <div id="chart-canvas-wrap">
+      <canvas id="chart-canvas"></canvas>
+    </div>`;
+
+      // Ritarda il rendering per lasciare il DOM stabilizzarsi
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => drawChart(data));
+      });
+    }
+
+    function drawChart(data) {
+      const canvas = document.getElementById('chart-canvas');
+      if (!canvas) return;
+      const wrap = document.getElementById('chart-canvas-wrap');
+      const rect = wrap.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      const pad = { top: 20, right: 12, bottom: 32, left: 42 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      if (data.length < 2) {
+        // Un solo punto → mostra valore centrato
+        ctx.fillStyle = 'rgba(242,242,242,.25)';
+        ctx.font = '600 13px Barlow, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${data[0].weight} kg — servono almeno 2 sessioni`, W / 2, H / 2);
+        return;
+      }
+
+      const weights = data.map(d => d.weight);
+      let minW = Math.min(...weights);
+      let maxW = Math.max(...weights);
+      if (minW === maxW) { minW -= 5; maxW += 5; }
+      const rangeW = maxW - minW;
+      const yPad = rangeW * 0.12;
+      minW -= yPad; maxW += yPad;
+
+      // Griglia orizzontale
+      const gridLines = 5;
+      ctx.strokeStyle = 'rgba(255,255,255,.06)';
+      ctx.lineWidth = 1;
+      ctx.font = '600 10px Barlow Condensed, system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(242,242,242,.25)';
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= gridLines; i++) {
+        const val = minW + (maxW - minW) * (i / gridLines);
+        const y = pad.top + plotH - (plotH * i / gridLines);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(W - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(1), pad.left - 6, y + 3);
+      }
+
+      // Etichette date asse X
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(242,242,242,.25)';
+      const maxLabels = Math.min(data.length, Math.floor(plotW / 50));
+      const step = Math.max(1, Math.floor(data.length / maxLabels));
+      for (let i = 0; i < data.length; i += step) {
+        const x = pad.left + (i / (data.length - 1)) * plotW;
+        const d = data[i].date;
+        const label = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+        ctx.fillText(label, x, H - pad.bottom + 16);
+      }
+
+      // Calcola punti
+      const points = data.map((d, i) => ({
+        x: pad.left + (i / (data.length - 1)) * plotW,
+        y: pad.top + plotH - ((d.weight - minW) / (maxW - minW)) * plotH
+      }));
+
+      // Area gradient sotto la linea
+      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+      grad.addColorStop(0, 'rgba(255,255,255,.12)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, pad.top + plotH);
+      points.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.lineTo(points[points.length - 1].x, pad.top + plotH);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Linea
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.strokeStyle = '#f2f2f2';
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Punti
+      points.forEach((p, i) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#000';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.strokeStyle = '#f2f2f2';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // Ultimo valore evidenziato
+      const last = points[points.length - 1];
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#f2f2f2';
+      ctx.fill();
+    }
+
+    function renderChartInfo(data) {
+      const info = document.getElementById('chart-info');
+      if (data.length === 0) { info.innerHTML = ''; return; }
+
+      const weights = data.map(d => d.weight);
+      const max = Math.max(...weights);
+      const last = weights[weights.length - 1];
+      const first = weights[0];
+      const diff = last - first;
+      const sign = diff >= 0 ? '+' : '';
+
+      info.innerHTML = `
+    <div class="chart-info-card">
+      <div class="chart-info-val">${last}<small style="font-size:11px;color:var(--txt3)"> kg</small></div>
+      <div class="chart-info-lbl">Ultimo</div>
+    </div>
+    <div class="chart-info-card">
+      <div class="chart-info-val">${max}<small style="font-size:11px;color:var(--txt3)"> kg</small></div>
+      <div class="chart-info-lbl">Max</div>
+    </div>
+    <div class="chart-info-card">
+      <div class="chart-info-val">${sign}${diff.toFixed(1)}<small style="font-size:11px;color:var(--txt3)"> kg</small></div>
+      <div class="chart-info-lbl">Progresso</div>
+    </div>`;
+    }
+
+    // Ridisegna al resize
+    window.addEventListener('resize', () => {
+      if (currentTab === 'charts') renderChartsPage();
+    });
+
+    /* ════════════════════════════════════════
+       BLOCCO 2 — TIMER
+    ════════════════════════════════════════ */
+    let tmrTotal = 60, tmrLeft = 60, tmrTick = null, tmrRunning = false, audioCtx = null;
+    const CIRC = 2 * Math.PI * 32; // r=32 → ≈201.06
+
+    /* ── Wake Lock — schermo acceso mentre il timer è attivo ──
+       Screen Wake Lock API (supportata da Safari 16.4+/iOS 16.4+).
+       Se non supportata, fallisce silenziosamente.             */
+    let wakeLock = null;
+    async function acquireWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch { }
+    }
+    function releaseWakeLock() {
+      try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch { }
+    }
+    // Riacquisisce il lock se la pagina torna in foreground durante il timer
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && tmrRunning) acquireWakeLock();
+    });
+
+    function ensureCtx() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    function beep(freq = 880, dur = .55) { try { ensureCtx(); const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = freq; o.type = 'sine'; g.gain.setValueAtTime(.55, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + dur); o.start(); o.stop(audioCtx.currentTime + dur); } catch { } }
+    function fmtTime(s) { return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
+    function updateTimerUI() {
+      const el = document.getElementById('timer-num');
+      el.textContent = fmtTime(tmrLeft); el.className = tmrLeft <= 5 && tmrLeft > 0 ? 'urgent' : '';
+      const pct = tmrTotal > 0 ? tmrLeft / tmrTotal : 0;
+      document.getElementById('t-fill').style.strokeDashoffset = CIRC * (1 - pct);
+      document.getElementById('t-fill').style.stroke = tmrLeft <= 5 ? 'var(--txt2)' : 'var(--txt)';
+      const lbl = document.getElementById('timer-state-lbl');
+      lbl.textContent = tmrRunning ? (tmrLeft <= 5 ? '— urgente' : '● in corso') : (tmrLeft === 0 ? '✓ fine' : 'pronto');
+      document.getElementById('btn-timer').textContent = tmrRunning ? '⏸ Pausa' : '▶ Start';
+      document.getElementById('btn-timer').className = 'btn btn-sm ' + (tmrRunning ? 'btn-red' : 'btn-green');
+    }
+    function setTimer(sec) { ensureCtx(); stopTimer(); tmrTotal = sec; tmrLeft = sec; updateTimerUI(); }
+    function timerStartPause() {
+      ensureCtx();
+      if (tmrRunning) { stopTimer(); return; }
+      if (tmrLeft <= 0) tmrLeft = tmrTotal;
+      tmrRunning = true;
+      acquireWakeLock();   // ← schermo acceso
+      updateTimerUI();
+      tmrTick = setInterval(() => {
+        tmrLeft--; updateTimerUI();
+        if (tmrLeft <= 0) {
+          stopTimer();
+          beep(880, .3); setTimeout(() => beep(1100, .3), 320); setTimeout(() => beep(1320, .5), 640);
+          if ('vibrate' in navigator) navigator.vibrate([150, 80, 150, 80, 300]);
+          const el = document.getElementById('timer-num'); el.classList.add('done'); setTimeout(() => el.classList.remove('done'), 2500);
+        }
+      }, 1000);
+    }
+    function stopTimer() {
+      clearInterval(tmrTick); tmrRunning = false;
+      releaseWakeLock();   // ← schermo torna normale
+      updateTimerUI();
+    }
+    function timerReset() { stopTimer(); tmrLeft = tmrTotal; updateTimerUI(); }
+    updateTimerUI();
+
+    /* ════════════════════════════════════════
+       SERVICE WORKER
+    ════════════════════════════════════════ */
+    // Deregistra vecchi service worker per evitare problemi di cache
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      });
+      caches.keys().then(names => names.forEach(n => caches.delete(n)));
+    }
+  </script>
+  <!-- ══════════════════════════════════
+     OVERLAY — Storico sessioni
+══════════════════════════════════ -->
+  <div class="overlay" id="history-overlay" onclick="handleHistoryOverlay(event)">
+    <div class="history-sheet">
+      <div style="padding:0 18px">
+        <div class="sheet-handle"></div>
+      </div>
+      <div class="history-header">
+        <div class="history-title">Storico sessioni</div>
+        <button class="btn btn-ghost btn-xs" onclick="closeHistorySheet()">Chiudi</button>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+
+</body>
+
+</html>
