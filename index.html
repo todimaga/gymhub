@@ -1376,39 +1376,32 @@
       color: var(--txt);
     }
 
-    /* Selettore esercizio */
+    /* Selettore esercizio (dropdown) */
     #chart-exercise-wrap {
       flex-shrink: 0;
-      display: flex;
-      gap: 6px;
-      padding: 0 4px 4px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
+      padding: 0 4px 2px;
     }
 
-    #chart-exercise-wrap::-webkit-scrollbar {
-      display: none
-    }
-
-    .chart-ex-pill {
-      flex-shrink: 0;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      background: var(--c2);
-      color: var(--txt2);
+    #chart-exercise-select {
+      width: 100%;
+      background: var(--c1);
       border: 1px solid var(--sep);
-      cursor: pointer;
-      transition: background .15s, color .15s, border-color .15s;
-      white-space: nowrap;
-    }
-
-    .chart-ex-pill.active {
-      background: var(--c4);
+      border-radius: var(--r-m);
       color: var(--txt);
-      border-color: var(--c5);
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 34px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--txt3) 50%),
+        linear-gradient(135deg, var(--txt3) 50%, transparent 50%);
+      background-position:
+        calc(100% - 16px) 50%,
+        calc(100% - 11px) 50%;
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
     }
 
     /* Metodo grafico */
@@ -1674,7 +1667,9 @@
     <div id="charts-page-head">
       <div id="charts-page-title">Grafico</div>
     </div>
-    <div id="chart-exercise-wrap"></div>
+    <div id="chart-exercise-wrap">
+      <select id="chart-exercise-select" onchange="selectChartExFromSelect()"></select>
+    </div>
     <div id="chart-method-wrap"></div>
     <div id="chart-container">
       <div id="chart-header">
@@ -2321,12 +2316,13 @@
     function renderChartsPage() {
       const exMap = getChartData();
       const wrap = document.getElementById('chart-exercise-wrap');
+      const exSelect = document.getElementById('chart-exercise-select');
       const methodWrap = document.getElementById('chart-method-wrap');
       const container = document.getElementById('chart-container');
       const info = document.getElementById('chart-info');
 
       if (exMap.size === 0) {
-        wrap.innerHTML = '';
+        if (exSelect) exSelect.innerHTML = '';
         methodWrap.innerHTML = '';
         container.innerHTML = `
       <div class="chart-empty">
@@ -2339,16 +2335,25 @@
         return;
       }
 
-      const exNames = [...exMap.keys()];
+      const exNames = [...exMap.keys()].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
       if (!chartSelectedEx || !exMap.has(chartSelectedEx)) {
         chartSelectedEx = exNames[0];
       }
 
-      // Render pills esercizi
-      wrap.innerHTML = exNames.map(name =>
-        `<button class="chart-ex-pill${name === chartSelectedEx ? ' active' : ''}" onclick="selectChartEx('${esc(name).replace(/'/g, "\\'")}')">` +
-        `${esc(name)}</button>`
-      ).join('');
+      // Render select esercizi (ordinato alfabeticamente)
+      if (exSelect) {
+        const prev = exSelect.value;
+        exSelect.innerHTML = exNames.map(name =>
+          `<option value="${esc(name)}"${name === chartSelectedEx ? ' selected' : ''}>${esc(name)}</option>`
+        ).join('');
+        // Se l’utente stava già su un valore valido, preservalo
+        if (prev && exNames.includes(prev)) {
+          chartSelectedEx = prev;
+          exSelect.value = prev;
+        } else {
+          exSelect.value = chartSelectedEx;
+        }
+      }
 
       methodWrap.innerHTML = CHART_METHODS.map(m =>
         `<button class="chart-method-pill${m.id === chartMethod ? ' active' : ''}" onclick="selectChartMethod('${m.id}')">${m.label}</button>`
@@ -2360,8 +2365,10 @@
       renderChartInfo(data);
     }
 
-    function selectChartEx(name) {
-      chartSelectedEx = name;
+    function selectChartExFromSelect() {
+      const sel = document.getElementById('chart-exercise-select');
+      if (!sel) return;
+      chartSelectedEx = sel.value;
       renderChartsPage();
     }
 
