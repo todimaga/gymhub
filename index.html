@@ -10,8 +10,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="GymHub" />
   <meta name="theme-color" content="#000000" />
-  <link rel="apple-touch-icon"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23000'/%3E%3Ctext x='50%25' y='56%25' dominant-baseline='middle' text-anchor='middle' font-size='72' font-weight='800' font-family='system-ui' fill='%23f2f2f2'%3EGH%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="./assets/app-icon.png" />
+  <link rel="icon" type="image/png" href="./assets/app-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600;700&display=swap"
@@ -1352,6 +1352,42 @@
       border-color: var(--c5);
     }
 
+    /* Metodo grafico */
+    #chart-method-wrap {
+      flex-shrink: 0;
+      display: flex;
+      gap: 6px;
+      padding: 0 4px 2px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    #chart-method-wrap::-webkit-scrollbar {
+      display: none
+    }
+
+    .chart-method-pill {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      background: var(--c2);
+      color: var(--txt3);
+      border: 1px solid var(--sep);
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+
+    .chart-method-pill.active {
+      background: var(--c3);
+      color: var(--txt);
+      border-color: var(--c5);
+    }
+
     /* Contenitore canvas */
     #chart-container {
       flex: 1;
@@ -1568,6 +1604,7 @@
       <div id="charts-page-title">Grafico</div>
     </div>
     <div id="chart-exercise-wrap"></div>
+    <div id="chart-method-wrap"></div>
     <div id="chart-container">
       <div id="chart-header">
         <div id="chart-ex-label"></div>
@@ -2060,6 +2097,33 @@
        PAGINA GRAFICO — RENDER
     ════════════════════════════════════════ */
     let chartSelectedEx = null;
+    let chartMethod = 'weight';
+    const CHART_METHODS = [
+      { id: 'weight', label: 'Peso', unit: 'kg' },
+      { id: 'volume', label: 'Volume', unit: 'kg' },
+      { id: 'e1rm', label: '1RM stimato', unit: 'kg' }
+    ];
+
+    function getChartMethodMeta() {
+      return CHART_METHODS.find(m => m.id === chartMethod) || CHART_METHODS[0];
+    }
+
+    function toNum(v) {
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function getPointValue(point) {
+      if (chartMethod === 'volume') {
+        if (point.weight == null || point.setsNum == null || point.repsNum == null) return null;
+        return point.weight * point.setsNum * point.repsNum;
+      }
+      if (chartMethod === 'e1rm') {
+        if (point.weight == null || point.repsNum == null) return null;
+        return point.weight * (1 + (point.repsNum / 30));
+      }
+      return point.weight;
+    }
 
     function getChartData() {
       const sessions = loadSessions();
@@ -2073,6 +2137,8 @@
           exMap.get(ex.name).push({
             ts: s.ts,
             weight: w,
+            setsNum: toNum(ex.sets),
+            repsNum: toNum(ex.reps),
             sets: ex.sets,
             reps: ex.reps,
             date: new Date(s.ts)
@@ -2087,11 +2153,13 @@
     function renderChartsPage() {
       const exMap = getChartData();
       const wrap = document.getElementById('chart-exercise-wrap');
+      const methodWrap = document.getElementById('chart-method-wrap');
       const container = document.getElementById('chart-container');
       const info = document.getElementById('chart-info');
 
       if (exMap.size === 0) {
         wrap.innerHTML = '';
+        methodWrap.innerHTML = '';
         container.innerHTML = `
       <div class="chart-empty">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
@@ -2114,6 +2182,10 @@
         `${esc(name)}</button>`
       ).join('');
 
+      methodWrap.innerHTML = CHART_METHODS.map(m =>
+        `<button class="chart-method-pill${m.id === chartMethod ? ' active' : ''}" onclick="selectChartMethod('${m.id}')">${m.label}</button>`
+      ).join('');
+
       // Dati dell'esercizio selezionato
       const data = exMap.get(chartSelectedEx);
       renderChart(data);
@@ -2125,12 +2197,19 @@
       renderChartsPage();
     }
 
+    function selectChartMethod(methodId) {
+      if (!CHART_METHODS.some(m => m.id === methodId)) return;
+      chartMethod = methodId;
+      renderChartsPage();
+    }
+
     function renderChart(data) {
+      const methodMeta = getChartMethodMeta();
       const container = document.getElementById('chart-container');
       container.innerHTML = `
     <div id="chart-header">
       <div id="chart-ex-label">${esc(chartSelectedEx)}</div>
-      <div id="chart-stat">${data.length} session${data.length === 1 ? 'e' : 'i'}</div>
+      <div id="chart-stat">${methodMeta.label} · ${data.length} session${data.length === 1 ? 'e' : 'i'}</div>
     </div>
     <div id="chart-canvas-wrap">
       <canvas id="chart-canvas"></canvas>
@@ -2143,6 +2222,7 @@
     }
 
     function drawChart(data) {
+      const methodMeta = getChartMethodMeta();
       const canvas = document.getElementById('chart-canvas');
       if (!canvas) return;
       const wrap = document.getElementById('chart-canvas-wrap');
@@ -2163,18 +2243,26 @@
       const plotW = W - pad.left - pad.right;
       const plotH = H - pad.top - pad.bottom;
 
-      if (data.length < 2) {
+      const valuedData = data
+        .map(d => ({ ...d, value: getPointValue(d) }))
+        .filter(d => Number.isFinite(d.value));
+
+      if (valuedData.length < 2) {
         // Un solo punto → mostra valore centrato
         ctx.fillStyle = 'rgba(242,242,242,.25)';
         ctx.font = '600 13px Barlow, system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${data[0].weight} kg — servono almeno 2 sessioni`, W / 2, H / 2);
+        if (valuedData.length === 1) {
+          ctx.fillText(`${valuedData[0].value.toFixed(1)} ${methodMeta.unit} — servono almeno 2 sessioni`, W / 2, H / 2);
+        } else {
+          ctx.fillText(`Dati insufficienti per il metodo "${methodMeta.label}"`, W / 2, H / 2);
+        }
         return;
       }
 
-      const weights = data.map(d => d.weight);
-      let minW = Math.min(...weights);
-      let maxW = Math.max(...weights);
+      const values = valuedData.map(d => d.value);
+      let minW = Math.min(...values);
+      let maxW = Math.max(...values);
       if (minW === maxW) { minW -= 5; maxW += 5; }
       const rangeW = maxW - minW;
       const yPad = rangeW * 0.12;
@@ -2194,25 +2282,25 @@
         ctx.moveTo(pad.left, y);
         ctx.lineTo(W - pad.right, y);
         ctx.stroke();
-        ctx.fillText(val.toFixed(1), pad.left - 6, y + 3);
+        ctx.fillText(`${val.toFixed(1)} ${methodMeta.unit}`, pad.left - 6, y + 3);
       }
 
       // Etichette date asse X
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(242,242,242,.25)';
-      const maxLabels = Math.min(data.length, Math.floor(plotW / 50));
-      const step = Math.max(1, Math.floor(data.length / maxLabels));
-      for (let i = 0; i < data.length; i += step) {
-        const x = pad.left + (i / (data.length - 1)) * plotW;
-        const d = data[i].date;
+      const maxLabels = Math.min(valuedData.length, Math.floor(plotW / 50));
+      const step = Math.max(1, Math.floor(valuedData.length / maxLabels));
+      for (let i = 0; i < valuedData.length; i += step) {
+        const x = pad.left + (i / (valuedData.length - 1)) * plotW;
+        const d = valuedData[i].date;
         const label = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
         ctx.fillText(label, x, H - pad.bottom + 16);
       }
 
       // Calcola punti
-      const points = data.map((d, i) => ({
-        x: pad.left + (i / (data.length - 1)) * plotW,
-        y: pad.top + plotH - ((d.weight - minW) / (maxW - minW)) * plotH
+      const points = valuedData.map((d, i) => ({
+        x: pad.left + (i / (valuedData.length - 1)) * plotW,
+        y: pad.top + plotH - ((d.value - minW) / (maxW - minW)) * plotH
       }));
 
       // Area gradient sotto la linea
@@ -2261,27 +2349,39 @@
     }
 
     function renderChartInfo(data) {
+      const methodMeta = getChartMethodMeta();
       const info = document.getElementById('chart-info');
       if (data.length === 0) { info.innerHTML = ''; return; }
 
-      const weights = data.map(d => d.weight);
-      const max = Math.max(...weights);
-      const last = weights[weights.length - 1];
-      const first = weights[0];
+      const values = data
+        .map(d => getPointValue(d))
+        .filter(v => Number.isFinite(v));
+
+      if (values.length === 0) {
+        info.innerHTML = `
+    <div class="chart-info-card" style="grid-column:1 / -1">
+      <div class="chart-info-lbl">Metodo ${methodMeta.label} non disponibile con questi dati</div>
+    </div>`;
+        return;
+      }
+
+      const max = Math.max(...values);
+      const last = values[values.length - 1];
+      const first = values[0];
       const diff = last - first;
       const sign = diff >= 0 ? '+' : '';
 
       info.innerHTML = `
     <div class="chart-info-card">
-      <div class="chart-info-val">${last}<small style="font-size:11px;color:var(--txt3)"> kg</small></div>
+      <div class="chart-info-val">${last.toFixed(1)}<small style="font-size:11px;color:var(--txt3)"> ${methodMeta.unit}</small></div>
       <div class="chart-info-lbl">Ultimo</div>
     </div>
     <div class="chart-info-card">
-      <div class="chart-info-val">${max}<small style="font-size:11px;color:var(--txt3)"> kg</small></div>
+      <div class="chart-info-val">${max.toFixed(1)}<small style="font-size:11px;color:var(--txt3)"> ${methodMeta.unit}</small></div>
       <div class="chart-info-lbl">Max</div>
     </div>
     <div class="chart-info-card">
-      <div class="chart-info-val">${sign}${diff.toFixed(1)}<small style="font-size:11px;color:var(--txt3)"> kg</small></div>
+      <div class="chart-info-val">${sign}${diff.toFixed(1)}<small style="font-size:11px;color:var(--txt3)"> ${methodMeta.unit}</small></div>
       <div class="chart-info-lbl">Progresso</div>
     </div>`;
     }
