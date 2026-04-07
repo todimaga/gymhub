@@ -967,6 +967,65 @@
       justify-content: space-between;
     }
 
+    /* Filtri storico */
+    #history-filters {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 0 4px 6px;
+    }
+
+    #history-filters .hf-row {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .hf-inp,
+    .hf-sel {
+      width: 100%;
+      background: var(--c1);
+      border: 1px solid var(--sep);
+      border-radius: var(--r-m);
+      color: var(--txt);
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .hf-inp::placeholder {
+      color: var(--txt3);
+    }
+
+    .hf-sel {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 30px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--txt3) 50%),
+        linear-gradient(135deg, var(--txt3) 50%, transparent 50%);
+      background-position:
+        calc(100% - 16px) 50%,
+        calc(100% - 11px) 50%;
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+    }
+
+    #btn-history-clear {
+      flex-shrink: 0;
+      padding: 10px 12px;
+      border-radius: var(--r-m);
+      border: 1px solid var(--sep);
+      background: var(--c2);
+      color: var(--txt2);
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
     #history-page-title {
       font-family: var(--f-num);
       font-size: 26px;
@@ -1593,6 +1652,18 @@
       <div id="history-page-title">Storico</div>
       <span id="history-count"></span>
     </div>
+    <div id="history-filters">
+      <div class="hf-row">
+        <input id="hf-q" class="hf-inp" type="search" placeholder="Cerca scheda o esercizio…" autocomplete="off" />
+        <button id="btn-history-clear" type="button" onclick="clearHistoryFilters()">Reset</button>
+      </div>
+      <select id="hf-plan" class="hf-sel" onchange="onHistoryFiltersChanged()">
+        <option value="">Tutte le schede</option>
+      </select>
+      <select id="hf-ex" class="hf-sel" onchange="onHistoryFiltersChanged()">
+        <option value="">Tutti gli esercizi</option>
+      </select>
+    </div>
     <div id="history-page-list"></div>
   </div>
 
@@ -2039,13 +2110,99 @@
     /* ════════════════════════════════════════
        PAGINA STORICO — RENDER
     ════════════════════════════════════════ */
+    const historyFilters = { q: '', plan: '', ex: '' };
+    let historyFiltersInit = false;
+
+    function norm(s) {
+      return String(s || '').trim().toLowerCase();
+    }
+
+    function uniqueSorted(arr) {
+      return [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+    }
+
+    function ensureHistoryFiltersInit() {
+      if (historyFiltersInit) return;
+      const q = document.getElementById('hf-q');
+      if (!q) return;
+      q.addEventListener('input', () => onHistoryFiltersChanged());
+      historyFiltersInit = true;
+    }
+
+    function onHistoryFiltersChanged() {
+      const q = document.getElementById('hf-q');
+      const plan = document.getElementById('hf-plan');
+      const ex = document.getElementById('hf-ex');
+      if (!q || !plan || !ex) return;
+      historyFilters.q = q.value;
+      historyFilters.plan = plan.value;
+      historyFilters.ex = ex.value;
+      renderHistoryPage();
+    }
+
+    function clearHistoryFilters() {
+      historyFilters.q = '';
+      historyFilters.plan = '';
+      historyFilters.ex = '';
+      const q = document.getElementById('hf-q');
+      const plan = document.getElementById('hf-plan');
+      const ex = document.getElementById('hf-ex');
+      if (q) q.value = '';
+      if (plan) plan.value = '';
+      if (ex) ex.value = '';
+      renderHistoryPage();
+    }
+
+    function populateHistoryFilterOptions(sessions) {
+      const planSel = document.getElementById('hf-plan');
+      const exSel = document.getElementById('hf-ex');
+      if (!planSel || !exSel) return;
+
+      const plans = uniqueSorted(sessions.map(s => s.planName));
+      const exNames = uniqueSorted(
+        sessions.flatMap(s => (s.exercises || []).map(ex => ex && ex.name))
+      );
+
+      const prevPlan = planSel.value;
+      const prevEx = exSel.value;
+
+      planSel.innerHTML = `<option value="">Tutte le schede</option>` + plans.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      exSel.innerHTML = `<option value="">Tutti gli esercizi</option>` + exNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+
+      planSel.value = plans.includes(prevPlan) ? prevPlan : historyFilters.plan;
+      exSel.value = exNames.includes(prevEx) ? prevEx : historyFilters.ex;
+    }
+
+    function filterSessions(sessions) {
+      const q = norm(historyFilters.q);
+      const plan = historyFilters.plan;
+      const ex = historyFilters.ex;
+
+      return sessions.filter(s => {
+        if (plan && s.planName !== plan) return false;
+        if (ex) {
+          const has = (s.exercises || []).some(e => e && e.name === ex);
+          if (!has) return false;
+        }
+        if (q) {
+          const inPlan = norm(s.planName).includes(q);
+          const inEx = (s.exercises || []).some(e => norm(e && e.name).includes(q));
+          if (!inPlan && !inEx) return false;
+        }
+        return true;
+      });
+    }
+
     function renderHistoryPage() {
+      ensureHistoryFiltersInit();
       const sessions = loadSessions();
       const list = document.getElementById('history-page-list');
       const count = document.getElementById('history-count');
 
+      populateHistoryFilterOptions(sessions);
+      const filtered = filterSessions(sessions);
       count.textContent = sessions.length > 0
-        ? `${sessions.length} session${sessions.length === 1 ? 'e' : 'i'}`
+        ? `${filtered.length}/${sessions.length} session${sessions.length === 1 ? 'e' : 'i'}`
         : '';
 
       if (sessions.length === 0) {
@@ -2059,7 +2216,18 @@
         return;
       }
 
-      list.innerHTML = sessions.map((s, idx) => {
+      if (filtered.length === 0) {
+        list.innerHTML = `
+      <div class="history-page-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+        <div>Nessun risultato.<br>Prova a cambiare i filtri.</div>
+      </div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map((s) => {
         const d = new Date(s.ts);
         const date = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
         const time = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
