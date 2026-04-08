@@ -1870,7 +1870,11 @@
       <td class="td-name">${esc(ex.name)}</td>
       <td><span class="td-val">${esc(ex.sets)}</span></td>
       <td><span class="td-val">${esc(ex.repsPlanned ?? ex.reps ?? '—')}</span></td>
-      <td><span class="td-val">${esc(ex.repsDone ?? ex.reps ?? '—')}</span></td>
+      <td class="peso-cell" id="repsdone-${i}" onclick="editRepsDoneInline(${i})">
+        <span class="td-val">${esc(ex.repsDone ?? ex.reps ?? '—')}</span>
+        <input type="number" min="0" max="99" id="repsdone-inp-${i}"
+          onblur="commitRepsDone(${i})" onkeydown="if(event.key==='Enter')commitRepsDone(${i})" onclick="event.stopPropagation()"/>
+      </td>
       <td><span class="badge-rir">${esc(ex.rir)}</span></td>
       <td class="peso-cell td-peso" id="peso-${i}" onclick="editPesoInline(${i})">
         <span class="td-val">${esc(ex.weight)}<small style="font-size:9px;color:var(--txt3);margin-left:2px">kg</small></span>
@@ -1906,7 +1910,31 @@
     }
     function delEx(i) { getExercises().splice(i, 1); savePlans(); renderTable(); }
     function editPesoInline(i) { const inp = document.getElementById(`peso-inp-${i}`); inp.style.display = 'block'; inp.value = getExercises()[i].weight !== '—' ? getExercises()[i].weight : ''; inp.focus(); inp.select(); }
-    function commitPeso(i) { const inp = document.getElementById(`peso-inp-${i}`); if (inp.value.trim() !== '') { getExercises()[i].weight = inp.value.trim(); savePlans(); } inp.style.display = 'none'; renderTable(); }
+    function commitPeso(i) {
+      const inp = document.getElementById(`peso-inp-${i}`);
+      const val = inp.value.trim();
+      getExercises()[i].weight = val !== '' ? val : '—';
+      savePlans();
+      inp.style.display = 'none';
+      renderTable();
+    }
+    function editRepsDoneInline(i) {
+      const inp = document.getElementById(`repsdone-inp-${i}`);
+      const ex = getExercises()[i];
+      const current = ex.repsDone ?? ex.reps;
+      inp.style.display = 'block';
+      inp.value = current !== '—' ? current : '';
+      inp.focus();
+      inp.select();
+    }
+    function commitRepsDone(i) {
+      const inp = document.getElementById(`repsdone-inp-${i}`);
+      const val = inp.value.trim();
+      getExercises()[i].repsDone = val !== '' ? val : '—';
+      savePlans();
+      inp.style.display = 'none';
+      renderTable();
+    }
     function openExSheet(editIdx = -1) {
       document.getElementById('edit-idx').value = editIdx;
       document.getElementById('ex-sheet-ttl').textContent = editIdx >= 0 ? 'Modifica Esercizio' : 'Nuovo Esercizio';
