@@ -361,7 +361,7 @@
 
     #add-row {
       display: grid;
-      grid-template-columns: 1fr 38px 38px 38px 52px auto;
+      grid-template-columns: 1fr 34px 34px 34px 34px 52px auto;
       gap: 5px;
       align-items: center;
       margin-bottom: 10px
@@ -709,7 +709,7 @@
 
     .field-row {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1fr;
+      grid-template-columns: repeat(5, 1fr);
       gap: 8px
     }
 
@@ -1562,7 +1562,8 @@
         <div id="add-row">
           <input class="inp" id="inp-name" type="text" placeholder="Esercizio" autocomplete="off" autocorrect="off" />
           <input class="inp" id="inp-sets" type="number" placeholder="S" min="1" max="20" />
-          <input class="inp" id="inp-reps" type="number" placeholder="R" min="1" max="99" />
+          <input class="inp" id="inp-reps-planned" type="text" placeholder="RP es. 5-7" inputmode="numeric" />
+          <input class="inp" id="inp-reps-done" type="number" placeholder="RE" min="0" max="99" />
           <input class="inp" id="inp-rir" type="number" placeholder="RIR" min="0" max="5" />
           <input class="inp" id="inp-weight" type="number" placeholder="kg" min="0" step=".5" />
           <button class="btn btn-accent btn-xs" onclick="addExercise()" style="white-space:nowrap">Aggiungi</button>
@@ -1573,7 +1574,8 @@
               <tr>
                 <th style="text-align:left">Esercizio</th>
                 <th>Set</th>
-                <th>Rep</th>
+                <th>Rep P</th>
+                <th>Rep E</th>
                 <th>RIR</th>
                 <th>Peso</th>
                 <th></th>
@@ -1749,7 +1751,8 @@
       <div class="field-row">
         <div class="field"><label>Serie</label><input type="number" id="s-sets" placeholder="4" min="1" max="20" />
         </div>
-        <div class="field"><label>Rip.</label><input type="number" id="s-reps" placeholder="8" min="1" max="99" /></div>
+        <div class="field"><label>Rip. previste</label><input type="text" id="s-reps-planned" placeholder="es. 5-7" inputmode="numeric" /></div>
+        <div class="field"><label>Rip. eseguite</label><input type="number" id="s-reps-done" placeholder="8" min="0" max="99" /></div>
         <div class="field"><label>RIR</label><input type="number" id="s-rir" placeholder="2" min="0" max="5" /></div>
         <div class="field"><label>Peso kg</label><input type="number" id="s-weight" placeholder="100" min="0"
             step=".5" /></div>
@@ -1786,6 +1789,15 @@
     function activePlan() { return plans.find(p => p.id === activeId) || plans[0]; }
     function getExercises() { return activePlan().exercises; }
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function isValidPlannedReps(val) {
+      if (val === '—') return true;
+      const s = String(val || '').trim();
+      if (!s) return true;
+      if (/^\d{1,2}$/.test(s)) return true;
+      const m = s.match(/^(\d{1,2})\s*-\s*(\d{1,2})$/);
+      if (!m) return false;
+      return Number(m[1]) <= Number(m[2]);
+    }
 
     function renderTabs() {
       const wrap = document.getElementById('plan-tabs');
@@ -1857,7 +1869,8 @@
     <tr id="row-${i}">
       <td class="td-name">${esc(ex.name)}</td>
       <td><span class="td-val">${esc(ex.sets)}</span></td>
-      <td><span class="td-val">${esc(ex.reps)}</span></td>
+      <td><span class="td-val">${esc(ex.repsPlanned ?? ex.reps ?? '—')}</span></td>
+      <td><span class="td-val">${esc(ex.repsDone ?? ex.reps ?? '—')}</span></td>
       <td><span class="badge-rir">${esc(ex.rir)}</span></td>
       <td class="peso-cell td-peso" id="peso-${i}" onclick="editPesoInline(${i})">
         <span class="td-val">${esc(ex.weight)}<small style="font-size:9px;color:var(--txt3);margin-left:2px">kg</small></span>
@@ -1872,13 +1885,23 @@
     }
     function addExercise() {
       const name = document.getElementById('inp-name').value.trim();
-      const sets = document.getElementById('inp-sets').value || '—'; const reps = document.getElementById('inp-reps').value || '—';
+      const sets = document.getElementById('inp-sets').value || '—';
+      const repsPlannedRaw = document.getElementById('inp-reps-planned').value.trim();
+      const repsPlanned = repsPlannedRaw || '—';
+      const repsDone = document.getElementById('inp-reps-done').value || '—';
       const rir = document.getElementById('inp-rir').value !== '' ? document.getElementById('inp-rir').value : '—';
       const weight = document.getElementById('inp-weight').value || '—';
       if (!name) { document.getElementById('inp-name').style.borderColor = 'var(--txt2)'; document.getElementById('inp-name').focus(); return; }
+      if (!isValidPlannedReps(repsPlanned)) {
+        const inp = document.getElementById('inp-reps-planned');
+        inp.style.borderColor = 'var(--txt2)';
+        inp.focus();
+        return;
+      }
       document.getElementById('inp-name').style.borderColor = '';
-      getExercises().push({ name, sets, reps, rir, weight }); savePlans(); renderTable();
-      ['inp-name', 'inp-sets', 'inp-reps', 'inp-rir', 'inp-weight'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('inp-reps-planned').style.borderColor = '';
+      getExercises().push({ name, sets, repsPlanned, repsDone, rir, weight }); savePlans(); renderTable();
+      ['inp-name', 'inp-sets', 'inp-reps-planned', 'inp-reps-done', 'inp-rir', 'inp-weight'].forEach(id => { document.getElementById(id).value = ''; });
       document.getElementById('inp-name').focus();
     }
     function delEx(i) { getExercises().splice(i, 1); savePlans(); renderTable(); }
@@ -1887,8 +1910,16 @@
     function openExSheet(editIdx = -1) {
       document.getElementById('edit-idx').value = editIdx;
       document.getElementById('ex-sheet-ttl').textContent = editIdx >= 0 ? 'Modifica Esercizio' : 'Nuovo Esercizio';
-      if (editIdx >= 0) { const ex = getExercises()[editIdx]; document.getElementById('s-name').value = ex.name !== '—' ? ex.name : ''; document.getElementById('s-sets').value = ex.sets !== '—' ? ex.sets : ''; document.getElementById('s-reps').value = ex.reps !== '—' ? ex.reps : ''; document.getElementById('s-rir').value = ex.rir !== '—' ? ex.rir : ''; document.getElementById('s-weight').value = ex.weight !== '—' ? ex.weight : ''; }
-      else { ['s-name', 's-sets', 's-reps', 's-rir', 's-weight'].forEach(id => { document.getElementById(id).value = ''; }); }
+      if (editIdx >= 0) {
+        const ex = getExercises()[editIdx];
+        document.getElementById('s-name').value = ex.name !== '—' ? ex.name : '';
+        document.getElementById('s-sets').value = ex.sets !== '—' ? ex.sets : '';
+        document.getElementById('s-reps-planned').value = (ex.repsPlanned ?? ex.reps) !== '—' ? (ex.repsPlanned ?? ex.reps ?? '') : '';
+        document.getElementById('s-reps-done').value = (ex.repsDone ?? ex.reps) !== '—' ? (ex.repsDone ?? ex.reps ?? '') : '';
+        document.getElementById('s-rir').value = ex.rir !== '—' ? ex.rir : '';
+        document.getElementById('s-weight').value = ex.weight !== '—' ? ex.weight : '';
+      }
+      else { ['s-name', 's-sets', 's-reps-planned', 's-reps-done', 's-rir', 's-weight'].forEach(id => { document.getElementById(id).value = ''; }); }
       document.getElementById('ex-overlay').classList.add('open');
       setTimeout(() => document.getElementById('s-name').focus(), 300);
     }
@@ -1898,7 +1929,23 @@
       const name = document.getElementById('s-name').value.trim();
       if (!name) { document.getElementById('s-name').style.borderColor = 'var(--txt2)'; return; }
       document.getElementById('s-name').style.borderColor = '';
-      const ex = { name, sets: document.getElementById('s-sets').value || '—', reps: document.getElementById('s-reps').value || '—', rir: document.getElementById('s-rir').value !== '' ? document.getElementById('s-rir').value : '—', weight: document.getElementById('s-weight').value || '—' };
+      const repsPlannedRaw = document.getElementById('s-reps-planned').value.trim();
+      const repsPlanned = repsPlannedRaw || '—';
+      if (!isValidPlannedReps(repsPlanned)) {
+        const inp = document.getElementById('s-reps-planned');
+        inp.style.borderColor = 'var(--txt2)';
+        inp.focus();
+        return;
+      }
+      document.getElementById('s-reps-planned').style.borderColor = '';
+      const ex = {
+        name,
+        sets: document.getElementById('s-sets').value || '—',
+        repsPlanned,
+        repsDone: document.getElementById('s-reps-done').value || '—',
+        rir: document.getElementById('s-rir').value !== '' ? document.getElementById('s-rir').value : '—',
+        weight: document.getElementById('s-weight').value || '—'
+      };
       const idx = parseInt(document.getElementById('edit-idx').value);
       if (idx >= 0) { getExercises()[idx] = ex; } else { getExercises().push(ex); }
       savePlans(); renderTable(); closeExSheet();
@@ -2233,7 +2280,7 @@
         <span class="session-ex-label">set</span>
         <span class="session-ex-val">${esc(ex.sets)}</span>
         <span class="session-ex-label">×</span>
-        <span class="session-ex-val">${esc(ex.reps)}${ex.weight && ex.weight !== '—' ? ' · ' + ex.weight + 'kg' : ''}</span>
+        <span class="session-ex-val">${esc(ex.repsDone ?? ex.reps ?? '—')}${ex.weight && ex.weight !== '—' ? ' · ' + ex.weight + 'kg' : ''}</span>
       </div>`).join('');
 
         return `
@@ -2301,9 +2348,9 @@
             ts: s.ts,
             weight: w,
             setsNum: toNum(ex.sets),
-            repsNum: toNum(ex.reps),
+            repsNum: toNum(ex.repsDone ?? ex.reps),
             sets: ex.sets,
-            reps: ex.reps,
+            reps: ex.repsDone ?? ex.reps,
             date: new Date(s.ts)
           });
         });
