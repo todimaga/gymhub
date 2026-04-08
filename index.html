@@ -1562,7 +1562,7 @@
         <div id="add-row">
           <input class="inp" id="inp-name" type="text" placeholder="Esercizio" autocomplete="off" autocorrect="off" />
           <input class="inp" id="inp-sets" type="number" placeholder="S" min="1" max="20" />
-          <input class="inp" id="inp-reps-planned" type="text" placeholder="RP es. 5-7" inputmode="numeric" />
+          <input class="inp" id="inp-reps-planned" type="text" placeholder="RP es. 5-7" inputmode="text" />
           <input class="inp" id="inp-reps-done" type="number" placeholder="RE" min="0" max="99" />
           <input class="inp" id="inp-rir" type="number" placeholder="RIR" min="0" max="5" />
           <input class="inp" id="inp-weight" type="number" placeholder="kg" min="0" step=".5" />
@@ -1751,7 +1751,7 @@
       <div class="field-row">
         <div class="field"><label>Serie</label><input type="number" id="s-sets" placeholder="4" min="1" max="20" />
         </div>
-        <div class="field"><label>Rip. previste</label><input type="text" id="s-reps-planned" placeholder="es. 5-7" inputmode="numeric" /></div>
+        <div class="field"><label>Rip. previste</label><input type="text" id="s-reps-planned" placeholder="es. 5-7" inputmode="text" /></div>
         <div class="field"><label>Rip. eseguite</label><input type="number" id="s-reps-done" placeholder="8" min="0" max="99" /></div>
         <div class="field"><label>RIR</label><input type="number" id="s-rir" placeholder="2" min="0" max="5" /></div>
         <div class="field"><label>Peso kg</label><input type="number" id="s-weight" placeholder="100" min="0"
@@ -1797,6 +1797,12 @@
       const m = s.match(/^(\d{1,2})\s*-\s*(\d{1,2})$/);
       if (!m) return false;
       return Number(m[1]) <= Number(m[2]);
+    }
+    function isNumericOrDash(val) {
+      if (val === '—') return true;
+      const s = String(val || '').trim();
+      if (!s) return true;
+      return /^\d+$/.test(s);
     }
 
     function renderTabs() {
@@ -1902,8 +1908,22 @@
         inp.focus();
         return;
       }
+      if (!isNumericOrDash(repsDone)) {
+        const inp = document.getElementById('inp-reps-done');
+        inp.style.borderColor = 'var(--txt2)';
+        inp.focus();
+        return;
+      }
+      if (!isNumericOrDash(rir)) {
+        const inp = document.getElementById('inp-rir');
+        inp.style.borderColor = 'var(--txt2)';
+        inp.focus();
+        return;
+      }
       document.getElementById('inp-name').style.borderColor = '';
       document.getElementById('inp-reps-planned').style.borderColor = '';
+      document.getElementById('inp-reps-done').style.borderColor = '';
+      document.getElementById('inp-rir').style.borderColor = '';
       getExercises().push({ name, sets, repsPlanned, repsDone, rir, weight }); savePlans(); renderTable();
       ['inp-name', 'inp-sets', 'inp-reps-planned', 'inp-reps-done', 'inp-rir', 'inp-weight'].forEach(id => { document.getElementById(id).value = ''; });
       document.getElementById('inp-name').focus();
@@ -1959,19 +1979,35 @@
       document.getElementById('s-name').style.borderColor = '';
       const repsPlannedRaw = document.getElementById('s-reps-planned').value.trim();
       const repsPlanned = repsPlannedRaw || '—';
+      const repsDone = document.getElementById('s-reps-done').value || '—';
+      const rir = document.getElementById('s-rir').value !== '' ? document.getElementById('s-rir').value : '—';
       if (!isValidPlannedReps(repsPlanned)) {
         const inp = document.getElementById('s-reps-planned');
         inp.style.borderColor = 'var(--txt2)';
         inp.focus();
         return;
       }
+      if (!isNumericOrDash(repsDone)) {
+        const inp = document.getElementById('s-reps-done');
+        inp.style.borderColor = 'var(--txt2)';
+        inp.focus();
+        return;
+      }
+      if (!isNumericOrDash(rir)) {
+        const inp = document.getElementById('s-rir');
+        inp.style.borderColor = 'var(--txt2)';
+        inp.focus();
+        return;
+      }
       document.getElementById('s-reps-planned').style.borderColor = '';
+      document.getElementById('s-reps-done').style.borderColor = '';
+      document.getElementById('s-rir').style.borderColor = '';
       const ex = {
         name,
         sets: document.getElementById('s-sets').value || '—',
         repsPlanned,
-        repsDone: document.getElementById('s-reps-done').value || '—',
-        rir: document.getElementById('s-rir').value !== '' ? document.getElementById('s-rir').value : '—',
+        repsDone,
+        rir,
         weight: document.getElementById('s-weight').value || '—'
       };
       const idx = parseInt(document.getElementById('edit-idx').value);
